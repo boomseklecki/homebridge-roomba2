@@ -37,7 +37,7 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "watch": "npm run build && npm run plugin-ui && npm link && nodemon",
-    "plugin-ui": "shx cp ./src/homebridge-ui/public/index.html ./dist/homebridge-ui/public/",
+    "plugin-ui": "shx mkdir -p ./dist/homebridge-ui/public && shx cp ./src/homebridge-ui/public/index.html ./dist/homebridge-ui/public/index.html",
     "build": "npm run clean && tsc && npm run plugin-ui",
     "prepublishOnly": "npm run lint && npm run build && npm run plugin-ui && npm run docs && npm run docs:lint && npm run docs:theme",
     "postpublish": "npm run clean && npm ci",
