@@ -197,7 +197,7 @@ export default class RoombaAccessory implements AccessoryPlugin {
 
     this.accessoryInfo = accessory.getService(Service.AccessoryInformation) || accessory.addService(Service.AccessoryInformation)
     this.filterMaintenance = accessory.getService(Service.FilterMaintenance) || accessory.addService(Service.FilterMaintenance)
-    this.switchService = accessory.getService(this.name) || accessory.addService(Service.Switch, this.name)
+    this.switchService = accessory.getService(Service.Switch) || accessory.addService(Service.Switch, this.name)
     this.switchService.setPrimaryService(true)
     this.batteryService = accessory.getService(Service.Battery) || accessory.addService(Service.Battery)
 

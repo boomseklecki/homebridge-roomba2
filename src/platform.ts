@@ -1,4 +1,5 @@
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, Service } from 'homebridge'
+import { Categories } from 'homebridge'
 
 import type { DeviceInfo, Robot } from './roomba.js'
 import type { DeviceConfig, RoombaPlatformConfig } from './settings.js'
@@ -99,7 +100,7 @@ export default class RoombaPlatform implements DynamicPlatformPlugin {
       } else {
         this.log.debug('accessory device: %s', JSON.stringify(device))
         this.log.info('Adding new accessory:', device.name)
-        const accessory = new this.api.platformAccessory(device.name, uuid)
+        const accessory = new this.api.platformAccessory(device.name, uuid, Categories.FAN)
         accessory.context.device = device
         const { serialNumber, deviceInfo } = this.serialNum(device)
         accessory.context.serialNumber = serialNumber
