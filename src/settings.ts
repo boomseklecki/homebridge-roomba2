@@ -2,6 +2,10 @@ import type { RobotMission } from 'dorita980'
 import type { PlatformConfig } from 'homebridge'
 
 import type { Robot } from './roomba.js'
+
+export interface NamedMission extends RobotMission {
+  name: string
+}
 /**
  * This is the name of the platform that users will use to register the plugin in the Homebridge config.json
  */
@@ -26,8 +30,7 @@ export interface DeviceConfig extends Robot {
     blid: string
     robotpwd: string
     ipaddress: string
-    cleanBehaviour: 'everywhere' | 'rooms'
-    mission?: RobotMission
+    missions?: NamedMission[]
     stopBehaviour: 'home' | 'pause'
     /**
      * Idle Poll Interval (minutes).

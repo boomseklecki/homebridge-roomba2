@@ -3,7 +3,7 @@ import type { AccessoryPlugin, API, CharacteristicGetCallback, CharacteristicSet
 
 import type RoombaPlatform from './platform.js'
 import type { DeviceInfo, Robot } from './roomba.js'
-import type { DeviceConfig, RoombaPlatformConfig } from './settings.js'
+import type { DeviceConfig, NamedMission, RoombaPlatformConfig } from './settings.js'
 
 import dorita980 from 'dorita980'
 
@@ -85,8 +85,7 @@ export default class RoombaAccessory implements AccessoryPlugin {
   private blid: string
   private robotpwd: string
   private ipaddress: string
-  private cleanBehaviour: 'everywhere' | 'rooms'
-  private mission: RobotMission
+  private missionServices: Map<string, Service> = new Map()
   private stopBehaviour: 'home' | 'pause'
   private debug: boolean
   private idlePollIntervalMillis: number
@@ -174,8 +173,6 @@ export default class RoombaAccessory implements AccessoryPlugin {
     this.robotpwd = device.robotpwd || device.password
     this.ipaddress = device.ipaddress ?? device.ip
     this.version = device.softwareVer ?? this.platform.version ?? '0.0.0'
-    this.cleanBehaviour = device.cleanBehaviour !== undefined ? device.cleanBehaviour : 'everywhere'
-    this.mission = device.mission || { pmap_id: 'local' }
     this.stopBehaviour = device.stopBehaviour !== undefined ? device.stopBehaviour : 'home'
     this.idlePollIntervalMillis = device.idleWatchInterval ? (device.idleWatchInterval * 60_000) : config.idleWatchInterval ? (config.idleWatchInterval * 60_000) : 900_000
     const showDockAsContactSensor = device.dockContactSensor === undefined ? true : device.dockContactSensor
@@ -237,6 +234,28 @@ export default class RoombaAccessory implements AccessoryPlugin {
       this.homeService = accessory.getServiceById(Service.Switch, 'returning') || accessory.addService(Service.Switch, HOME_SERVICE_NAME, 'returning')
     } else {
       removeServiceIfPresent(Service.Switch, 'returning')
+    }
+
+    // Remove stale mission services (subtypes no longer in config)
+    const currentMissionNames = new Set((device.missions ?? []).map(m => m.name))
+    for (const service of accessory.services) {
+      if (service.UUID === Service.Switch.UUID && service.subtype && service.subtype !== 'returning') {
+        if (!currentMissionNames.has(service.subtype)) {
+          accessory.removeService(service)
+        }
+      }
+    }
+
+    // Add a Switch service per named mission
+    for (const mission of device.missions ?? []) {
+      const missionService = accessory.getServiceById(Service.Switch, mission.name) || accessory.addService(Service.Switch, mission.name, mission.name)
+      missionService
+        .setCharacteristic(Characteristic.Name, mission.name)
+        .getCharacteristic(Characteristic.On)
+        .on('set', (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
+          this.setMissionState(mission, missionService, value, callback)
+        })
+      this.missionServices.set(mission.name, missionService)
     }
 
     // Set accessory information
@@ -371,6 +390,9 @@ export default class RoombaAccessory implements AccessoryPlugin {
     }
     if (this.tankService) {
       services.push(this.tankService)
+    }
+    for (const missionService of this.missionServices.values()) {
+      services.push(missionService)
     }
 
     return services
@@ -559,13 +581,8 @@ export default class RoombaAccessory implements AccessoryPlugin {
           if (this.cachedStatus.paused) {
             await roomba.resume()
           } else {
-            if (this.cleanBehaviour === 'rooms') {
-              await roomba.cleanRoom(this.mission)
-              this.log.debug('Roomba is cleaning your rooms')
-            } else {
-              await roomba.clean()
+            await roomba.clean()
               this.log.debug('Roomba is running')
-            }
           }
 
           callback()
@@ -654,6 +671,37 @@ export default class RoombaAccessory implements AccessoryPlugin {
       } catch (error) {
         this.log.warn('Roomba failed: %s', (error as Error).message)
 
+        callback(error as Error)
+      }
+    })
+  }
+
+  private setMissionState(mission: NamedMission, service: Service, powerOn: CharacteristicValue, callback: CharacteristicSetCallback) {
+    if (!powerOn) {
+      callback()
+      return
+    }
+
+    this.log.info('Starting mission: %s', mission.name)
+
+    this.connect(async (error, roomba) => {
+      if (error || !roomba) {
+        callback(error || new Error('Unknown error'))
+        return
+      }
+
+      try {
+        await roomba.cleanRoom(mission)
+        this.log.debug('Roomba is running mission: %s', mission.name)
+
+        callback()
+
+        // Auto-reset the switch to off — it is stateless (a trigger, not a state)
+        service.updateCharacteristic(this.api.hap.Characteristic.On, false)
+
+        this.refreshStatusForUser()
+      } catch (error) {
+        this.log.warn('Mission failed: %s', (error as Error).message)
         callback(error as Error)
       }
     })

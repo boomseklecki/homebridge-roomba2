@@ -17,9 +17,9 @@
             "email": {
                 "type": "string",
                 "title": "iRobot Account Email",
-                "description": "The email address you use to log into the iRobot Home app.",
+                "description": "The email address you use to log into the iRobot Home app. Optional if devices are configured manually.",
                 "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
-                "required": true,
+                "required": false,
                 "x-schema-form": {
                     "type": "email"
                 }
@@ -27,8 +27,8 @@
             "password": {
                 "type": "string",
                 "title": "iRobot Account Password",
-                "description": "The password you use to log into the iRobot Home app.",
-                "required": true,
+                "description": "The password you use to log into the iRobot Home app. Optional if devices are configured manually.",
+                "required": false,
                 "x-schema-form": {
                     "type": "password"
                 }
@@ -106,103 +106,78 @@
                             "title": "Home Switch",
                             "required": false
                         },
-                        "cleanBehaviour": {
-                            "type": "string",
-                            "title": "When Roomba is turned on",
-                            "required": true,
-                            "default": "everywhere",
-                            "oneOf": [
-                                {
-                                    "title": "Clean everywhere",
-                                    "enum": [
-                                        "everywhere"
-                                    ]
-                                },
-                                {
-                                    "title": "Clean specific rooms",
-                                    "enum": [
-                                        "rooms"
-                                    ]
-                                }
-                            ]
-                        },
-                        "mission": {
-                            "type": "object",
-                            "title": "Mission Info",
-                            "properties": {
-                                "ordered": {
-                                    "type": "number",
-                                    "title": "Clean rooms in order",
-                                    "default": 1,
-                                    "oneOf": [
-                                        {
-                                            "title": "Yes",
-                                            "enum": [
-                                                1
-                                            ]
-                                        },
-                                        {
-                                            "title": "No",
-                                            "enum": [
-                                                0
-                                            ]
-                                        }
-                                    ],
-                                    "condition": {
-                                        "functionBody": "return (model.devices && model.devices[arrayIndices].cleanBehaviour === 'rooms');"
-                                    }
-                                },
-                                "pmap_id": {
-                                    "type": "string",
-                                    "title": "Pmap Id",
-                                    "condition": {
-                                        "functionBody": "return (model.devices && model.devices[arrayIndices].cleanBehaviour === 'rooms');"
-                                    }
-                                },
-                                "regions": {
-                                    "type": "array",
-                                    "title": "Rooms to be cleaned",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "region_id": {
-                                                "type": "string",
-                                                "title": "Region Id"
+                        "missions": {
+                            "type": "array",
+                            "title": "Named Missions",
+                            "description": "Each mission creates a separate switch in HomeKit. Turning it on starts that room clean and the switch resets to off.",
+                            "items": {
+                                "title": "Mission",
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "title": "Mission Name",
+                                        "required": true
+                                    },
+                                    "pmap_id": {
+                                        "type": "string",
+                                        "title": "Pmap Id",
+                                        "required": true
+                                    },
+                                    "user_pmapv_id": {
+                                        "type": "string",
+                                        "title": "User Pmapv Id",
+                                        "required": true
+                                    },
+                                    "ordered": {
+                                        "type": "number",
+                                        "title": "Clean rooms in order",
+                                        "default": 1,
+                                        "oneOf": [
+                                            {
+                                                "title": "Yes",
+                                                "enum": [1]
                                             },
-                                            "type": {
-                                                "type": "string",
-                                                "title": "Type",
-                                                "default": "rid"
-                                            },
-                                            "params": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "noAutoPasses": {
-                                                        "type": "boolean",
-                                                        "required": false,
-                                                        "default": false,
-                                                        "title": "Specify Number of Cleaning Passes"
-                                                    },
-                                                    "twoPass": {
-                                                        "type": "boolean",
-                                                        "required": false,
-                                                        "default": false,
-                                                        "title": "Two Passes"
+                                            {
+                                                "title": "No",
+                                                "enum": [0]
+                                            }
+                                        ]
+                                    },
+                                    "regions": {
+                                        "type": "array",
+                                        "title": "Rooms to be cleaned",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "region_id": {
+                                                    "type": "string",
+                                                    "title": "Region Id"
+                                                },
+                                                "type": {
+                                                    "type": "string",
+                                                    "title": "Type",
+                                                    "default": "rid"
+                                                },
+                                                "params": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "noAutoPasses": {
+                                                            "type": "boolean",
+                                                            "required": false,
+                                                            "default": false,
+                                                            "title": "Specify Number of Cleaning Passes"
+                                                        },
+                                                        "twoPass": {
+                                                            "type": "boolean",
+                                                            "required": false,
+                                                            "default": false,
+                                                            "title": "Two Passes"
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
-                                    },
-                                    "condition": {
-                                        "functionBody": "return (model.devices && model.devices[arrayIndices].cleanBehaviour === 'rooms');"
-                                    }
-                                },
-                                "user_pmapv_id": {
-                                    "type": "string",
-                                    "title": "User Pmapv Id",
-                                    "required": true,
-                                    "condition": {
-                                        "functionBody": "return (model.devices && model.devices[arrayIndices].cleanBehaviour === 'rooms');"
                                     }
                                 }
                             }
@@ -292,22 +267,22 @@
                         "devices[].binContactSensor",
                         "devices[].tankContactSensor",
                         "devices[].idleWatchInterval",
-                        "devices[].cleanBehaviour",
                         {
-                            "key": "devices[].mission",
-                            "type": "fieldset",
-                            "title": "Mission Settings",
+                            "key": "devices[].missions",
+                            "type": "tabarray",
+                            "title": "{{ value.name || 'New Mission' }}",
                             "expandable": true,
                             "expanded": false,
                             "items": [
-                                "devices[].mission.pmap_id",
-                                "devices[].mission.user_pmapv_id",
-                                "devices[].mission.regions",
-                                "devices[].mission.regions[].region_id",
-                                "devices[].mission.regions[].type",
-                                "devices[].mission.regions[].params.noAutoPasses",
-                                "devices[].mission.regions[].params.twoPass",
-                                "devices[].mission.ordered"
+                                "devices[].missions[].name",
+                                "devices[].missions[].pmap_id",
+                                "devices[].missions[].user_pmapv_id",
+                                "devices[].missions[].ordered",
+                                "devices[].missions[].regions",
+                                "devices[].missions[].regions[].region_id",
+                                "devices[].missions[].regions[].type",
+                                "devices[].missions[].regions[].params.noAutoPasses",
+                                "devices[].missions[].regions[].params.twoPass"
                             ]
                         },
                         "devices[].stopBehaviour",
