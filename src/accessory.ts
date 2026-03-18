@@ -194,7 +194,14 @@ export default class RoombaAccessory implements AccessoryPlugin {
 
     this.accessoryInfo = accessory.getService(Service.AccessoryInformation) || accessory.addService(Service.AccessoryInformation)
     this.filterMaintenance = accessory.getService(Service.FilterMaintenance) || accessory.addService(Service.FilterMaintenance)
-    this.switchService = accessory.getService(Service.Switch) || accessory.addService(Service.Switch, this.name)
+
+    // Remove stale Switch service if upgrading from a previous version
+    const oldSwitch = accessory.getService(Service.Switch)
+    if (oldSwitch && !oldSwitch.subtype) {
+      accessory.removeService(oldSwitch)
+    }
+
+    this.switchService = accessory.getService(Service.Fanv2) || accessory.addService(Service.Fanv2, this.name)
     this.switchService.setPrimaryService(true)
     this.batteryService = accessory.getService(Service.Battery) || accessory.addService(Service.Battery)
 
@@ -271,9 +278,12 @@ export default class RoombaAccessory implements AccessoryPlugin {
 
     this.switchService
       .setCharacteristic(Characteristic.Name, this.name)
-      .getCharacteristic(Characteristic.On)
+      .getCharacteristic(Characteristic.Active)
       .on('set', this.setRunningState.bind(this))
       .on('get', this.createCharacteristicGetter('Running status', this.runningStatus))
+    this.switchService
+      .getCharacteristic(Characteristic.CurrentFanState)
+      .on('get', this.createCharacteristicGetter('Fan state', this.currentFanStateStatus))
     this.batteryService
       .getCharacteristic(Characteristic.BatteryLevel)
       .on('get', this.createCharacteristicGetter('Battery level', this.batteryLevelStatus))
@@ -890,7 +900,8 @@ export default class RoombaAccessory implements AccessoryPlugin {
 
     const Characteristic = this.api.hap.Characteristic
 
-    updateCharacteristic(this.switchService, Characteristic.On, this.runningStatus)
+    updateCharacteristic(this.switchService, Characteristic.Active, this.runningStatus)
+    updateCharacteristic(this.switchService, Characteristic.CurrentFanState, this.currentFanStateStatus)
     updateCharacteristic(this.batteryService, Characteristic.ChargingState, this.chargingStatus)
     updateCharacteristic(this.batteryService, Characteristic.BatteryLevel, this.batteryLevelStatus)
     updateCharacteristic(this.batteryService, Characteristic.StatusLowBattery, this.batteryStatus)
@@ -996,6 +1007,13 @@ export default class RoombaAccessory implements AccessoryPlugin {
     : status.running
       ? 1
       : 0
+
+  private currentFanStateStatus = (status: Status) => {
+    if (status.running === undefined && status.charging === undefined) return undefined
+    if (status.running) return this.api.hap.Characteristic.CurrentFanState.BLOWING_AIR
+    if (status.paused) return this.api.hap.Characteristic.CurrentFanState.IDLE
+    return this.api.hap.Characteristic.CurrentFanState.INACTIVE
+  }
 
   private chargingStatus = (status: Status) => status.charging === undefined
     ? undefined
